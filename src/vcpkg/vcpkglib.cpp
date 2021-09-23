@@ -2,7 +2,6 @@
 #include <vcpkg/base/strings.h>
 #include <vcpkg/base/util.h>
 
-#include <vcpkg/metrics.h>
 #include <vcpkg/paragraphs.h>
 #include <vcpkg/vcpkglib.h>
 #include <vcpkg/vcpkgpaths.h>
@@ -100,8 +99,6 @@ namespace vcpkg
                                                           std::vector<std::string>* lines,
                                                           const Path& listfile_path)
     {
-        static bool was_tracked = false;
-
         if (lines->empty())
         {
             return;
@@ -111,9 +108,6 @@ namespace vcpkg
         {
             return; // File already in the new format
         }
-
-        if (was_tracked)
-            LockGuardPtr<Metrics>(g_metrics)->track_property("listfile", "update to new format");
 
         // The files are sorted such that directories are placed just before the files they contain
         // (They are not necessarily sorted alphabetically, e.g. libflac)
