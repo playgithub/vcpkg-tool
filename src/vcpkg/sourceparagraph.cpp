@@ -608,10 +608,11 @@ namespace vcpkg
         constexpr static StringLiteral NAME = "name";
         constexpr static StringLiteral DESCRIPTION = "description";
         constexpr static StringLiteral DEPENDENCIES = "dependencies";
+        constexpr static StringLiteral SUPPORTS = "supports";
 
         virtual Span<const StringView> valid_fields() const override
         {
-            static const StringView t[] = {DESCRIPTION, DEPENDENCIES};
+            static const StringView t[] = {DESCRIPTION, DEPENDENCIES, SUPPORTS};
             return t;
         }
 
@@ -630,6 +631,7 @@ namespace vcpkg
             r.required_object_field(
                 type_name(), obj, DESCRIPTION, feature->description, Json::ParagraphDeserializer::instance);
             r.optional_object_field(obj, DEPENDENCIES, feature->dependencies, DependencyArrayDeserializer::instance);
+            r.optional_object_field(obj, SUPPORTS, feature->supports_expression, PlatformExprDeserializer::instance);
 
             return std::move(feature); // gcc-7 bug workaround redundant move
         }
@@ -639,51 +641,13 @@ namespace vcpkg
     constexpr StringLiteral FeatureDeserializer::NAME;
     constexpr StringLiteral FeatureDeserializer::DESCRIPTION;
     constexpr StringLiteral FeatureDeserializer::DEPENDENCIES;
-
-    struct ArrayFeatureDeserializer : Json::IDeserializer<std::unique_ptr<FeatureParagraph>>
-    {
-        virtual StringView type_name() const override { return "a feature"; }
-
-        virtual Span<const StringView> valid_fields() const override
-        {
-            static const StringView t[] = {
-                FeatureDeserializer::NAME,
-                FeatureDeserializer::DESCRIPTION,
-                FeatureDeserializer::DEPENDENCIES,
-            };
-            return t;
-        }
-
-        virtual Optional<std::unique_ptr<FeatureParagraph>> visit_object(Json::Reader& r,
-                                                                         const Json::Object& obj) override
-        {
-            std::string name;
-            r.required_object_field(
-                type_name(), obj, FeatureDeserializer::NAME, name, Json::IdentifierDeserializer::instance);
-            auto opt = FeatureDeserializer::instance.visit_object(r, obj);
-            if (auto p = opt.get())
-            {
-                p->get()->name = std::move(name);
-            }
-            return opt;
-        }
-
-        static Json::ArrayDeserializer<ArrayFeatureDeserializer> array_instance;
-    };
-    Json::ArrayDeserializer<ArrayFeatureDeserializer> ArrayFeatureDeserializer::array_instance{
-        "an array of feature objects"};
+    constexpr StringLiteral FeatureDeserializer::SUPPORTS;
 
     struct FeaturesFieldDeserializer : Json::IDeserializer<std::vector<std::unique_ptr<FeatureParagraph>>>
     {
         virtual StringView type_name() const override { return "a set of features"; }
 
         virtual Span<const StringView> valid_fields() const override { return {}; }
-
-        virtual Optional<std::vector<std::unique_ptr<FeatureParagraph>>> visit_array(Json::Reader& r,
-                                                                                     const Json::Array& arr) override
-        {
-            return ArrayFeatureDeserializer::array_instance.visit_array(r, arr);
-        }
 
         virtual Optional<std::vector<std::unique_ptr<FeatureParagraph>>> visit_object(Json::Reader& r,
                                                                                       const Json::Object& obj) override
